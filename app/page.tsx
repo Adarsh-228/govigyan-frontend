@@ -240,12 +240,8 @@ function cleanItemPayload(form: ItemPayload): Record<string, unknown> {
 export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    return window.localStorage.getItem("govigyan_token");
-  });
+  const [isClientReady, setIsClientReady] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [userName, setUserName] = useState("User");
   const [activeView, setActiveView] = useState<"dashboard" | "erp">("dashboard");
   const [isLoading, setIsLoading] = useState(false);
@@ -316,6 +312,15 @@ export default function Home() {
     notes: "",
     unit_cost: "",
   });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setToken(window.localStorage.getItem("govigyan_token"));
+      setIsClientReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const authHeaders = useMemo(
     () => (token ? { Authorization: `Bearer ${token}` } : {}),
@@ -935,6 +940,16 @@ export default function Home() {
           : "Failed to fetch department stock",
       );
     }
+  }
+
+  if (!isClientReady) {
+    return (
+      <div className="min-h-screen bg-background px-4 py-8 text-foreground">
+        <main className="mx-auto w-full max-w-md border border-line bg-surface p-8">
+          <p className="text-sm text-muted">Loading...</p>
+        </main>
+      </div>
+    );
   }
 
   if (!token) {
