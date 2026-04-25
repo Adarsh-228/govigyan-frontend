@@ -240,7 +240,12 @@ function cleanItemPayload(form: ItemPayload): Record<string, unknown> {
 export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return window.localStorage.getItem("govigyan_token");
+  });
   const [userName, setUserName] = useState("User");
   const [activeView, setActiveView] = useState<"dashboard" | "erp">("dashboard");
   const [isLoading, setIsLoading] = useState(false);
@@ -600,19 +605,12 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const savedToken = window.localStorage.getItem("govigyan_token");
-    if (savedToken) {
-      setToken(savedToken);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!token) {
       return;
     }
 
     const headers = { Authorization: `Bearer ${token}` };
-    fetchJson("/api/v1/auth/me", headers)
+    void fetchJson("/api/v1/auth/me", headers)
       .then((data) => {
         if (data && typeof data === "object") {
           const record = data as Record<string, unknown>;
@@ -627,13 +625,18 @@ export default function Home() {
         setUserName("User");
       });
 
-    loadDashboardData(headers, dashboardRange).catch((loadError) => {
-      setError(describeFetchError(loadError));
-    });
+    const timer = window.setTimeout(() => {
+      void loadDashboardData(headers, dashboardRange).catch((loadError) => {
+        setError(describeFetchError(loadError));
+      });
 
-    loadDepartments(headers).catch(() => {
-      setDepartments([]);
-    });
+      void loadDepartments(headers).catch(() => {
+        setDepartments([]);
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, dashboardRange]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
